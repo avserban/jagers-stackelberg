@@ -1,0 +1,40 @@
+import comp34120.ex2.PlayerImpl;
+import comp34120.ex2.PlayerType;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
+
+/**
+ * The leader for jager team
+ * @author L33r and Sh3rb
+ */
+final class JagerLeader extends PlayerImpl
+{
+	private JagerLeader() throws RemoteException, NotBoundException
+	{
+		super(PlayerType.LEADER, "Simple Leader");
+	}
+
+	// NEED TO IMPLEMENT THIS!!!
+	@Override
+	public void proceedNewDay(int p_date) throws RemoteException
+	{
+		
+
+	}
+
+	@Override
+	public void goodbye() throws RemoteException
+	{
+		ExitTask.exit(500);
+	}
+
+	public static void main(final String[] p_args) throws RemoteException, NotBoundException
+	{
+		new JagerLeader();
+	}
+}
+
+
