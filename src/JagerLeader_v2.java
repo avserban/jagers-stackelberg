@@ -32,10 +32,32 @@ final class JagerLeader extends PlayerImpl
 		this.history = new Record[MAX_WINDOW_SIZE];
 
 		for (int day = 1; day <= MAX_WINDOW_SIZE - 1; day++)
-      		this.history[day] = m_platformStub.query(this.m_type, day);
+      this.history[day] = m_platformStub.query(this.m_type, day);
 
 
+    double[] error = new double[MAX_WINDOW_SIZE];
+    for (int day = 2; day <= MAX_WINDOW_SIZE - 1; day++)
+    {
+      regressionEquation(day);
+
+      for (int i = 1; i <= WINDOW_SIZE; ++i) 
+      	error[this.WINDOW_SIZE] += calculateError(this.cache[i]);
+    }
+
+    int minimum = 1;
+    for (int i = 2; i < BOB; ++i) 
+    {
+      if (error[i] < error[minimum])
+        minimum = i;
+    }
+    System.out.printf("Size: %2d, Error %.5f\n", minimum, error[minimum]/15);
+    this.windowSize = minimum;
 	}
+
+	private double calculateError(Record actual) {
+    double followerPrice = this.payoff.followerEstimate(actual.m_leaderPrice);
+    return Math.abs(followerPrice - actual.m_followerPrice);
+  }
 
 	@Override
 	public void endSimulation() throws RemoteException
@@ -47,9 +69,9 @@ final class JagerLeader extends PlayerImpl
 	public void proceedNewDay(int p_date) throws RemoteException
 	{
 		regressionEquation();
-   	 	m_platformStub.publishPrice(m_type, globalMaximum(aStar, bStar));
-    	updateHistory();
-    	this.history[100] = m_platformStub.query(this.m_type, p_date);
+   	m_platformStub.publishPrice(m_type, globalMaximum(aStar, bStar));
+    updateHistory();
+    this.history[100] = m_platformStub.query(this.m_type, p_date);
 	}
 
 	// This function calculates the regression equation for the past 100 days needed to approximate response function for the follower
@@ -75,24 +97,58 @@ final class JagerLeader extends PlayerImpl
    	 	this.bStar = (T * sumXsumY - sumX * sumY) / (T * sumXSquared - Math.pow(sumX, 2));
 	}
 
+	// This function calculates the regression equation for a variable number of days before the parameter
+	private double[] regressionEquation(int someDate)
+	{
+		double sumXSquared = 0;
+    	double sumY        = 0;
+    	double sumX        = 0;
+   	 	double sumXsumY    = 0;
+
+    	int T = someDate - 1;
+
+    	for (int date = someDate - windowSize; date < someDate; ++date) {
+      		Record oneDay   = this.cache[date];
+      		double lambda = Math.pow(forgettingFactor, T + 1 - date);
+      		sumX        += lambda * oneDay.m_leaderPrice;
+     		sumY        += lambda * oneDay.m_followerPrice;
+     		sumXSquared += lambda * Math.pow(oneDay.m_leaderPrice, 2);
+      		sumXsumY    += lambda * oneDay.m_leaderPrice * oneDay.m_followerPrice;
+    	}
+
+    	this.aStar = (sumXSquared * sumY - sumX * sumXsumY)  / (T * sumXSquared - Math.pow(sumX, 2));
+    	this.bStar = (T * sumXsumY - sumX * sumY) / (T * sumXSquared - Math.pow(sumX, 2));
+	}
+
 	private void modifyWindow()
 	{
 
 	}
 
-	private void errorChecking()
-	{
-
-	}
-
 	// This function gives you the follower's estimate value. Use only you have calculated aStar and bStar with the regression Equation
-	public double followerEstimate(double aStar, double bStar, double leaderPrice) {
-      return aStar + bStar * leaderPrice;
+	public double followerEstimate(String equation, double aStar, double bStar, double leaderPrice) {
+      if (equation.equals("normal"))
+      	return aStar + bStar * leaderPrice;
+      else
+      	return 
     }
 
     // This function gives you the global maximum. Use only you have calculated aStar and bStar with the regression Equation
     public float globalMaximum(double aStar, double bStar) {
-      return (float) ((2.7 + 0.3 * aStar) / (2.0 - 0.6 * bStar));
+    	double maxValue = -1, minValue = 1000;
+    	for (int day = 1; day <= MAX_WINDOW_SIZE - 1; day++)
+    	{
+    		if (maxValue < history[day].m_followerPrice)
+    			maxValue = history[day].m_followerPrice;
+
+    		if (minValue > history[day].m_followerPrice)
+    			minValue = history[day].m_followerPrice;
+    	}
+    		
+    	if bstar >= 0
+    		return (float) aStar + bStar * maxValue;
+    	else
+    		return (float) aStar + bStar * minValue;
     }
 
     // This function calculates our profit depending on our price and the follower price
