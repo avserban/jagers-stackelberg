@@ -33,10 +33,7 @@ final class JagerLeader_v2 extends PlayerImpl
 		super(PlayerType.LEADER, "Jager Leader");
 	}
 
-
-  /**
-  * This method computes the ideal window size used in the actual simulation.
-  **/
+  //This method computes the ideal window size used in the actual simulation.
 	@Override
 	public void startSimulation(final int p_steps) throws RemoteException
 	{
@@ -71,8 +68,8 @@ final class JagerLeader_v2 extends PlayerImpl
 	public void proceedNewDay(int p_date) throws RemoteException
 	{
     //check if we need to recompute window size
-    if (p_date % timer == 0)
-      updateWindowSize(); 
+    /*if (p_date % timer == 0)
+      updateWindowSize(); */
 
 		regressionEquation(p_date);
    	m_platformStub.publishPrice(m_type, globalMaximum(aStar, bStar));
@@ -130,75 +127,54 @@ final class JagerLeader_v2 extends PlayerImpl
 	// This function calculates the regression equation for a variable number of days before the parameter
 	private void regressionEquation(int someDate)
 	{
-		double sumXSquared = 0;
-    double sumY        = 0;
-    double sumX        = 0;
-   	double sumXsumY    = 0;
+    // Have some variables for the terms found in the a* and b* equations
+		double sumOfXSquared = 0;
+    double sumOfY = 0;
+    double sumOfX = 0;
+   	double sumOfXsumOfY = 0;
     Record oneDay;
-
     int T = someDate - 1;
+
+    // Calculating all the sums
     for (int date = someDate - WINDOW_SIZE; date < someDate; ++date) {
-      System.out.println(someDate + "   " + WINDOW_SIZE + "    " + date);
       if (date > 100)
         oneDay = this.history[date - (date % 100)];
       else
         oneDay = this.history[date];
+
       double lambda = Math.pow(forgettingFactor, T + 1 - date);
-      sumX        += lambda * oneDay.m_leaderPrice;
-     	sumY        += lambda * oneDay.m_followerPrice;
-     	sumXSquared += lambda * Math.pow(oneDay.m_leaderPrice, 2);
-      sumXsumY    += lambda * oneDay.m_leaderPrice * oneDay.m_followerPrice;
+      sumOfX += lambda * oneDay.m_leaderPrice;
+     	sumOfY += lambda * oneDay.m_followerPrice;
+     	sumOfXSquared += lambda * Math.pow(oneDay.m_leaderPrice, 2);
+      sumOfXsumOfY += lambda * oneDay.m_leaderPrice * oneDay.m_followerPrice;
     }
 
-    this.aStar = (sumXSquared * sumY - sumX * sumXsumY)  / (T * sumXSquared - Math.pow(sumX, 2));
-    this.bStar = (T * sumXsumY - sumX * sumY) / (T * sumXSquared - Math.pow(sumX, 2));
+    // calculate a* and b*
+    this.aStar = (sumOfXSquared * sumOfY - sumOfX * sumOfXsumOfY)  / (T * sumOfXSquared - Math.pow(sumOfX, 2));
+    this.bStar = (T * sumOfXsumOfY - sumOfX * sumOfY) / (T * sumOfXSquared - Math.pow(sumOfX, 2));
 	}
 
 
-	  // This function gives you the follower's estimate value. Use only you have calculated aStar and bStar with the regression Equation
-	  public double followerEstimate(String equation, double aStar, double bStar, double leaderPrice) {
-      	return aStar + bStar * leaderPrice;
-    }
+	// This function gives you the follower's estimate value. Use only you have calculated aStar and bStar with the regression Equation
+	public double followerEstimate(String equation, double aStar, double bStar, double leaderPrice) {
+    return aStar + bStar * leaderPrice;
+  }
 
-    // TODO: Change so that the it can calculate other types of equations based on a flag.
-    //
-    // This function gives you the global maximum. Use only you have calculated aStar and bStar with the regression Equation
-    public float globalMaximum(double aStar, double bStar) {
-      return (float) ((2.7 + 0.3 * aStar) / (2.0 - 0.6 * bStar));
-    	// double maxValue = -1, minValue = 1000;
-    	// for (int day = 1; day <= MAX_WINDOW_SIZE - 1; day++)
-    	// {
-    	// 	if (maxValue < history[day].m_followerPrice)
-    	// 		maxValue = history[day].m_followerPrice;
+  // This function gives you the global maximum. Use only you have calculated aStar and bStar with the regression Equation
+  public float globalMaximum(double aStar, double bStar) {
+    return (float) ((3 + 0.3 * aStar - 0.3 * bStar) / (2 + 0.6 * bStar));
+  }
 
-    	// 	if (minValue > history[day].m_followerPrice)
-    	// 		minValue = history[day].m_followerPrice;
-    	// }
-    		
-    	// if (bStar >= 0)
-    	// 	return (float) aStar + bStar * maxValue;
-    	// else
-    	// 	return (float) aStar + bStar * minValue;
-    }
+  // Rearranges the history when a new day has passed
+  private void updateHistory() {
+    if (WINDOW_SIZE < MAX_WINDOW_SIZE)
+      WINDOW_SIZE++;
 
-    // This function calculates our profit depending on our price and the follower price
-    private double profit(double leaderPrice, double followerPrice) {
-    	return (leaderPrice - 1.00) * ((2.0 - leaderPrice) + (0.3 * followerPrice));
-  	}
+    for (int date = 1; date <= 99; ++date) // For each element in the history.
+      history[date] = history[date + 1];
+  }
 
-  	// Rearranges the history when a new day has passed
-  	private void updateHistory() {
-    	if (WINDOW_SIZE < MAX_WINDOW_SIZE)
-        WINDOW_SIZE++;
-
-      for (int date = 1; date <= 99; ++date) // For each element in the history.
-      		history[date] = history[date + 1];
-  	}
-
-	public static void main(final String[] p_args) throws RemoteException, NotBoundException
-	{
+	public static void main(final String[] p_args) throws RemoteException, NotBoundException {
 		new JagerLeader_v2();
 	}
 }
-
-

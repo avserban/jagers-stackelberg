@@ -33,14 +33,6 @@ final class JagerLeader extends PlayerImpl
 
 		for (int day = 1; day <= MAX_WINDOW_SIZE - 1; day++)
       		this.history[day] = m_platformStub.query(this.m_type, day);
-
-
-	}
-
-	@Override
-	public void endSimulation() throws RemoteException
-	{
-		// print out some statistics
 	}
 
 	@Override
@@ -75,15 +67,6 @@ final class JagerLeader extends PlayerImpl
    	 	this.bStar = (T * sumXsumY - sumX * sumY) / (T * sumXSquared - Math.pow(sumX, 2));
 	}
 
-	private void modifyWindow()
-	{
-
-	}
-
-	private void errorChecking()
-	{
-
-	}
 
 	// This function gives you the follower's estimate value. Use only you have calculated aStar and bStar with the regression Equation
 	public double followerEstimate(double aStar, double bStar, double leaderPrice) {
@@ -92,7 +75,8 @@ final class JagerLeader extends PlayerImpl
 
     // This function gives you the global maximum. Use only you have calculated aStar and bStar with the regression Equation
     public float globalMaximum(double aStar, double bStar) {
-      return (float) ((2.7 + 0.3 * aStar) / (2.0 - 0.6 * bStar));
+      //return (float) ((2.7 + 0.3 * aStar) / (2.0 - 0.6 * bStar));
+      return (float) ((3 + 0.3 * aStar - 0.3 * bStar) / (2 - 0.6 * bStar));
     }
 
     // This function calculates our profit depending on our price and the follower price

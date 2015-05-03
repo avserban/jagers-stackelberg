@@ -144,10 +144,10 @@ public class PolynomialRegression {
         return s + "  (R^2 = " + String.format("%.3f", R2()) + ")";
     }
 
-/*    public static void main(String[] args) {
+    public static void main(String[] args) {
         double[] x = { 10, 20, 40, 80, 160, 200 };
         double[] y = { 100, 350, 1500, 6700, 20160, 40000 };
         PolynomialRegression regression = new PolynomialRegression(x, y, 3);
         StdOut.println(regression);
-    }*/
+    }
 }
