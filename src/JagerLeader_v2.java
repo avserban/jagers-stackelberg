@@ -45,39 +45,34 @@ final class JagerLeader_v2 extends PlayerImpl
 		for (int day = 1; day < MAX_WINDOW_SIZE; day++)
       this.history[day] = m_platformStub.query(this.m_type, day);  
 
-
     double[] error = new double[MAX_WINDOW_SIZE];
-
     for (this.WINDOW_SIZE = 1; this.WINDOW_SIZE < MAX_WINDOW_SIZE - 1; ++this.WINDOW_SIZE)
     {
       regressionEquation(MAX_WINDOW_SIZE - 1); //TODO: make sure this is accurate
       for (int i = 1; i < MAX_WINDOW_SIZE; ++i) 
-      {
       	error[WINDOW_SIZE] += calculateError(this.history[i]);
-      }
     }
 
-   int minimum = 1;
+    int minimum = 1;
     for (int i = 1; i < MAX_WINDOW_SIZE - 1; ++i) 
-    {
       if (error[i] < error[minimum])
         minimum = i;
-    }
+
     System.out.printf("Size: %2d, Error %.5f\n", minimum, error[minimum]/100);
     this.WINDOW_SIZE = MAX_WINDOW_SIZE - minimum - 1;
 	}
 
 	private double calculateError(Record actual) {
     double followerPrice = followerEstimate("normal", aStar, bStar, actual.m_leaderPrice);
-    return Math.abs(followerPrice - actual.m_followerPrice);
+    return Math.pow(followerPrice - actual.m_followerPrice, 2);
   }
 
 	@Override
 	public void proceedNewDay(int p_date) throws RemoteException
 	{
     //check if we need to recompute window size
-    // if (p_date % timer == 0)
-    //   updateWindowSize(); 
+    if (p_date % timer == 0)
+      updateWindowSize(); 
 
 		regressionEquation(p_date);
    	m_platformStub.publishPrice(m_type, globalMaximum(aStar, bStar));
@@ -89,7 +84,23 @@ final class JagerLeader_v2 extends PlayerImpl
   public void updateWindowSize()
   {
     // TODO: must check the current windowsize and find the smallest error and reupdate windowsize
+    double[] error = new double[WINDOW_SIZE];
+    int lastWindowSize = WINDOW_SIZE;
+    for (this.WINDOW_SIZE = 1; this.WINDOW_SIZE < lastWindowSize; ++this.WINDOW_SIZE)
+    {
+      regressionEquation(lastWindowSize); //TODO: make sure this is accurate
+      for (int i = 1; i < lastWindowSize; ++i) 
+        error[WINDOW_SIZE] += calculateError(this.history[i]);
+    }
 
+    int minimum = 1;
+    for (int i = 1; i < lastWindowSize; ++i) 
+    {
+      if (error[i] < error[minimum])
+        minimum = i;
+    }
+    System.out.printf("Size: %2d, Error %.5f\n", minimum, error[minimum]/lastWindowSize);
+    this.WINDOW_SIZE = lastWindowSize - minimum - 1;
   }
 
 
@@ -174,11 +185,6 @@ final class JagerLeader_v2 extends PlayerImpl
     private double profit(double leaderPrice, double followerPrice) {
     	return (leaderPrice - 1.00) * ((2.0 - leaderPrice) + (0.3 * followerPrice));
   	}
-
-  	// private double calculateError(Record actual) {
-   //  	double followerPrice = this.followerEstimate(aStar, bStar, actual.m_leaderPrice);
-   //  	return Math.abs(followerPrice - actual.m_followerPrice);
-  	// }
 
   	// Rearranges the history when a new day has passed
   	private void updateHistory() {
