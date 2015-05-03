@@ -60,28 +60,27 @@ final class JagerLeader_v3 extends PlayerImpl
     WINDOW_SIZE = END_WINDOWS_INDEX - START_WINDOWS_INDEX + 1;
 	}
 
-	private double calculateError(Record actual) {
-    double followerPrice = followerEstimate("normal", aStar, bStar, actual.m_leaderPrice);
-    return Math.pow(followerPrice - actual.m_followerPrice, 2);
-  }
-
 	@Override
 	public void proceedNewDay(int p_date) throws RemoteException
 	{
     //check if we need to recompute window size
     //System.out.println("A*: " + aStar + "----------------------- B*: " + bStar);
-    System.out.println("Current day: " + p_date);
-   	m_platformStub.publishPrice(m_type, globalMaximum(aStar, bStar));
-    this.history[p_date] = m_platformStub.query(this.m_type, p_date);
+    if(p_date != 101)
+      this.history[p_date - 1] = m_platformStub.query(this.m_type, p_date - 1);
+    System.out.println();
+    System.out.println("Current day: " + p_date + " -- START INDEX: " + START_WINDOWS_INDEX + " -- END INDEX: " + END_WINDOWS_INDEX);
 
-    //regressionEquation(START_WINDOWS_INDEX, END_WINDOWS_INDEX - 1);
-    System.out.println(START_WINDOWS_INDEX + " " + END_WINDOWS_INDEX);
-    
     historyError[END_WINDOWS_INDEX] = rSquare(START_WINDOWS_INDEX, END_WINDOWS_INDEX);
-    if (Math.abs(historyError[END_WINDOWS_INDEX] - historyError[END_WINDOWS_INDEX - 1]) < 0.01)
+    m_platformStub.publishPrice(m_type, globalMaximum(aStar, bStar));  
+    if (Math.abs(historyError[END_WINDOWS_INDEX] - historyError[END_WINDOWS_INDEX - 1]) < 0.00001)
       START_WINDOWS_INDEX = END_WINDOWS_INDEX;
     // System.out.println("Day " + END_WINDOWS_INDEX + ": " + START_WINDOWS_INDEX + " " + END_WINDOWS_INDEX + " " + historyError[END_WINDOWS_INDEX] + " Difference: " + (historyError[END_WINDOWS_INDEX] - historyError[END_WINDOWS_INDEX - 1]));  
     END_WINDOWS_INDEX ++;
+    /*try {
+      Thread.sleep(1000);                 //1000 milliseconds is one second.
+    } catch(InterruptedException ex) {
+      Thread.currentThread().interrupt();
+    }*/
 	}
 
   // This function calculates the regression equation for a variable number of days before the parameter
@@ -92,6 +91,7 @@ final class JagerLeader_v3 extends PlayerImpl
     double sumOfY = 0;
     double sumOfX = 0;
     double sumOfXsumOfY = 0;
+    double lambda = 0;
     Record oneDay;
     int T = endDate;
 
@@ -99,17 +99,21 @@ final class JagerLeader_v3 extends PlayerImpl
     for (int date = startDate; date <= endDate; ++date) {
       oneDay = this.history[date];
 
-      double lambda = Math.pow(forgettingFactor, T + 1 - date);
+      if(oneDay == null)
+        break;
+
+      lambda = Math.pow(forgettingFactor, T + 1 - date);
       sumOfX += lambda * oneDay.m_leaderPrice;
       sumOfY += lambda * oneDay.m_followerPrice;
       sumOfXSquared += lambda * Math.pow(oneDay.m_leaderPrice, 2);
       sumOfXsumOfY += lambda * oneDay.m_leaderPrice * oneDay.m_followerPrice;
     }
+    System.out.println("Lambda: " + lambda + " Sum X: " + sumOfX + " Sum Y: " + sumOfY);
 
     // calculate a* and b*
     this.aStar = (sumOfXSquared * sumOfY - sumOfX * sumOfXsumOfY)  / (T * sumOfXSquared - Math.pow(sumOfX, 2));
     this.bStar = (T * sumOfXsumOfY - sumOfX * sumOfY) / (T * sumOfXSquared - Math.pow(sumOfX, 2));
-    System.out.println("A*: " + aStar + "----------------------- B*: " + bStar);
+    //System.out.println("A*: " + aStar + "----------------------- B*: " + bStar);
   }
 
   private double rSquare(int startDate, int endDate)
@@ -123,6 +127,8 @@ final class JagerLeader_v3 extends PlayerImpl
     //Calculate sums of follower prices and estimations
     for (int i = startDate; i <= endDate; i ++)
     {
+      if(history[i] == null)
+        break;
       sumOfFollowerPrice += history[i].m_followerPrice;
       sumOfFollowerEstimation += followerEstimate("normal", aStar, bStar, history[i].m_leaderPrice);
     }
@@ -137,6 +143,8 @@ final class JagerLeader_v3 extends PlayerImpl
     //Calculate sums of follower prices and estimations
     for (int i = startDate; i <= endDate; i ++)
     {
+      if(history[i] == null)
+        break;
       sst += Math.pow(history[i].m_followerPrice - yBar, 2);
       sse += Math.pow(history[i].m_followerPrice - followerEstimate("normal", aStar, bStar, history[i].m_leaderPrice), 2);
     }
